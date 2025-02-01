@@ -16,8 +16,8 @@ describe("Manager", function () {
         await setupTest();
     });
 
-    it("Should set the right unlockTime", async function () {
+    it("Manager should have registered pool", async function () {
         const pools = await manager.getPools();
-        expect(pools.length).to.equal(0);
+        expect(pools.length).to.equal(1);
     });
 });
