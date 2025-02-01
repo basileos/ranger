@@ -3,15 +3,17 @@ import { Button } from "@/components/ui/button";
 import TradingViewChart from "@/components/analysis/TradingViewChart";
 import TechnicalIndicators from "@/components/analysis/TechnicalIndicators";
 import SentimentPanel from "@/components/analysis/SentimentPanel";
-import RangeAdjuster from "@/components/analysis/RangeAdjuster";
+import RangeAdjuster from "@/components/liquidity/RangeAdjuster";
 import Sidebar from "@/components/layout/Sidebar";
 import { useMarketData } from "@/hooks/useMarketData";
 import { usePredictions } from "@/hooks/usePredictions";
 import { formatDistanceToNow } from "date-fns";
 import { RefreshCw } from "lucide-react";
+import PredictionExplanationDialog from "@/components/analysis/PredictionExplanationDialog";
+import { useSentiment } from "@/hooks/useSentiment";
 
 export default function Dashboard() {
-  const { data: marketData, isLoading: marketLoading } = useMarketData();
+  const { data: marketData, isLoading: marketLoading, refetch: refetchMarket } = useMarketData();
   const {
     data: predictions,
     refetch: refetchPredictions,
@@ -19,8 +21,12 @@ export default function Dashboard() {
     isLoading: predictionLoading,
   } = usePredictions();
 
+  const { refetch: refetchSantiment } = useSentiment()
+
   const handleRefresh = () => {
-    refetchPredictions();
+    refetchMarket(); 
+    refetchPredictions(); 
+    refetchSantiment()
   };
 
   return (
@@ -64,6 +70,13 @@ export default function Dashboard() {
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Updated {formatDistanceToNow(predictions.timestamp)} ago
+                </div>
+                <div className="flex justify-end mt-2">
+                  <PredictionExplanationDialog 
+                    explanation={predictions.explanation}
+                    rangeLow={predictions.rangeLow}
+                    rangeHigh={predictions.rangeHigh}
+                  />
                 </div>
               </div>
             ) : (
