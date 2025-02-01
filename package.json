@@ -1,14 +1,13 @@
 {
   "name": "rest-express",
   "version": "1.0.0",
-  "type": "module",
   "license": "MIT",
   "scripts": {
     "dev": "tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "test-contracts": "hardhat test"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -84,6 +83,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
     "@types/connect-pg-simple": "^7.0.3",
@@ -99,8 +99,11 @@
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.27.1",
     "esbuild": "^0.24.0",
+    "hardhat": "^2.22.18",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.19.1",
     "typescript": "5.6.3",
     "vite": "^5.4.9"
