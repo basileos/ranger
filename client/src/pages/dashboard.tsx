@@ -3,24 +3,21 @@ import { Button } from "@/components/ui/button";
 import TradingViewChart from "@/components/analysis/TradingViewChart";
 import TechnicalIndicators from "@/components/analysis/TechnicalIndicators";
 import SentimentPanel from "@/components/analysis/SentimentPanel";
-import RangeAdjuster from "@/components/liquidity/RangeAdjuster";
-import UniswapPools from "@/components/liquidity/UniswapPools";
+import RangeAdjuster from "@/components/analysis/RangeAdjuster";
 import Sidebar from "@/components/layout/Sidebar";
 import { useMarketData } from "@/hooks/useMarketData";
 import { usePredictions } from "@/hooks/usePredictions";
 import { formatDistanceToNow } from "date-fns";
 import { RefreshCw } from "lucide-react";
 
-interface Predictions {
-  rangeLow: number;
-  rangeHigh: number;
-  confidence: number;
-  timestamp: number;
-}
-
 export default function Dashboard() {
   const { data: marketData, isLoading: marketLoading } = useMarketData();
-  const { data: predictions, refetch: refetchPredictions, isRefetching } = usePredictions();
+  const {
+    data: predictions,
+    refetch: refetchPredictions,
+    isRefetching,
+    isLoading: predictionLoading,
+  } = usePredictions();
 
   const handleRefresh = () => {
     refetchPredictions();
@@ -40,8 +37,8 @@ export default function Dashboard() {
           <Card className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">AI Predictions</h2>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="icon"
                 onClick={handleRefresh}
                 disabled={isRefetching}
@@ -83,11 +80,7 @@ export default function Dashboard() {
           </Card>
 
           <Card className="p-4">
-            <RangeAdjuster predictions={predictions} />
-          </Card>
-
-          <Card className="col-span-2 p-4">
-            <UniswapPools />
+            <RangeAdjuster predictions={predictions} isLoading={predictionLoading} />
           </Card>
         </div>
       </main>

@@ -1,10 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { Range, getTrackBackground } from "react-range";
-import { connectWallet } from "@/lib/web3";
+import {Skeleton} from "@/components/ui/skeleton.tsx";
 
 interface Props {
   predictions?: {
@@ -12,10 +10,10 @@ interface Props {
     rangeHigh: number;
     confidence: number;
   };
+  isLoading?: boolean;
 }
 
-export default function RangeAdjuster({ predictions }: Props) {
-  const { toast } = useToast();
+export default function RangeAdjuster({ predictions, isLoading }: Props) {
   const [range, setRange] = useState<[number, number]>([
     predictions?.rangeLow || 1800,
     predictions?.rangeHigh || 2200,
@@ -27,30 +25,6 @@ export default function RangeAdjuster({ predictions }: Props) {
     }
   }, [predictions]);
 
-  const handleApply = async () => {
-    try {
-      const account = await connectWallet();
-      if (!account) return;
-
-      await apiRequest("POST", "/api/range", {
-        low: range[0],
-        high: range[1],
-        account,
-      });
-
-      toast({
-        title: "Range Updated",
-        description: "New liquidity range has been set successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update range. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleReset = () => {
     if (predictions) {
       setRange([predictions.rangeLow, predictions.rangeHigh]);
@@ -59,6 +33,19 @@ export default function RangeAdjuster({ predictions }: Props) {
 
   const minPrice = predictions ? Math.floor(predictions.rangeLow * 0.8) : 1500;
   const maxPrice = predictions ? Math.ceil(predictions.rangeHigh * 1.2) : 2500;
+
+  if (isLoading) {
+    return (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Liquidity Range</h2>
+          <div className="space-y-4">
+            {[1, 2,3,4,5].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -146,9 +133,6 @@ export default function RangeAdjuster({ predictions }: Props) {
         </div>
 
         <div className="flex gap-4">
-          <Button onClick={handleApply} className="flex-1">
-            Apply Range
-          </Button>
           <Button
             variant="outline"
             onClick={handleReset}

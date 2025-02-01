@@ -17,3 +17,4 @@ vite.config.ts.*
 # solidity-coverage files
 /coverage
 /coverage.json
+.env

@@ -2,16 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocket, WebSocketServer } from 'ws';
 import type { IncomingMessage } from 'http';
-import { getEthereumData, getTechnicalIndicators, getCryptoNews, generatePredictions } from './services/crypto';
-import { getUniswapPools } from './services/uniswap';
-import { getPancakeswapPools } from './services/pancakeswap';
+import { getEthereumData, getCryptoNews } from './services/crypto';
+import { analyzeNewsWithAI, analyzeTechnicalIndicatorsWithAI, generatePredictionsWithAI } from './services/aiAnalysis';
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ 
     server: httpServer,
     verifyClient: ({ req }: { req: IncomingMessage }) => {
-      // Ignore Vite HMR connections
       return !req.headers['sec-websocket-protocol']?.includes('vite-hmr');
     }
   });
@@ -31,81 +29,85 @@ export function registerRoutes(app: Express): Server {
           }));
         } catch (error) {
           console.error('WebSocket data fetch error:', error);
+          ws.send(JSON.stringify({ error: 'Failed to fetch market data' }));
         }
       }
-    }, 10000); // Update every 10 seconds
+    }, 10000);
 
     ws.on('close', () => {
       clearInterval(interval);
     });
   });
 
-  // Market Data API
+  // Technical Analysis API
   app.get('/api/market-data', async (_req, res) => {
     try {
-      const data = await getTechnicalIndicators();
-      res.json(data);
+      const ethData = await getEthereumData();
+      const aiAnalysis = await analyzeTechnicalIndicatorsWithAI(
+        ethData.price,
+        ethData.volume_24h,
+        ethData.price_change_24h,
+        []
+      );
+
+      if (!aiAnalysis) {
+        throw new Error('Failed to generate AI technical analysis');
+      }
+
+      res.json({
+        price24h: {
+          current: ethData.price,
+          change: ethData.price_change_24h,
+          changePercentage: (ethData.price_change_24h / ethData.price) * 100,
+        },
+        volume24h: {
+          total: ethData.volume_24h,
+          buy: ethData.volume_24h * (ethData.price_change_24h > 0 ? 0.6 : 0.4),
+          sell: ethData.volume_24h * (ethData.price_change_24h > 0 ? 0.4 : 0.6),
+        },
+        indicators: aiAnalysis.indicators,
+        sentiment: aiAnalysis.overallSentiment,
+      });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch market data' });
+      console.error('Market data error:', error);
+      res.status(500).json({ 
+        error: 'Failed to fetch market data',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
-  // Uniswap Pools API
-  app.get('/api/uniswap/pools', async (_req, res) => {
-    try {
-      const { pools } = await getUniswapPools();
-      // Add platform identifier to each pool
-      const poolsWithPlatform = pools.map(pool => ({
-        ...pool,
-        platform: 'uniswap'
-      }));
-      res.json({ pools: poolsWithPlatform });
-    } catch (error) {
-      console.error('Error in /api/uniswap/pools:', error);
-      res.json({ pools: [] });
-    }
-  });
-
-  // PancakeSwap Pools API
-  app.get('/api/pancakeswap/pools', async (_req, res) => {
-    try {
-      const { pools } = await getPancakeswapPools();
-      res.json({ pools });
-    } catch (error) {
-      console.error('Error in /api/pancakeswap/pools:', error);
-      res.json({ pools: [] });
-    }
-  });
-
-  // Combined Pools API
-  app.get('/api/pools/all', async (_req, res) => {
-    try {
-      const [uniswapResult, pancakeswapResult] = await Promise.all([
-        getUniswapPools(),
-        getPancakeswapPools()
-      ]);
-
-      const uniswapPools = uniswapResult.pools.map(pool => ({
-        ...pool,
-        platform: 'uniswap'
-      }));
-
-      const allPools = [...uniswapPools, ...pancakeswapResult.pools];
-      res.json({ pools: allPools });
-    } catch (error) {
-      console.error('Error in /api/pools/all:', error);
-      res.json({ pools: [] });
-    }
-  });
-
-  // AI Predictions API
+  // Predictions API - Using AI predictions only
   app.get('/api/predictions', async (_req, res) => {
     try {
-      const predictions = await generatePredictions();
+      const ethData = await getEthereumData();
+      const technicalAnalysis = await analyzeTechnicalIndicatorsWithAI(
+        ethData.price,
+        ethData.volume_24h,
+        ethData.price_change_24h,
+        []
+      );
+
+      const newsData = await getCryptoNews();
+      const newsAnalysis = await analyzeNewsWithAI(newsData.news.headlines);
+
+      const predictions = await generatePredictionsWithAI(
+        ethData.price,
+        technicalAnalysis,
+        newsAnalysis
+      );
+
+      if (!predictions) {
+        throw new Error('Failed to generate predictions');
+      }
+
       res.json(predictions);
     } catch (error) {
       console.error('Prediction error:', error);
-      res.status(500).json({ error: 'Failed to generate predictions' });
+      res.status(500).json({ 
+        error: 'Failed to generate predictions',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
@@ -113,20 +115,27 @@ export function registerRoutes(app: Express): Server {
   app.get('/api/sentiment', async (_req, res) => {
     try {
       const newsData = await getCryptoNews();
-      res.json(newsData);
+      const aiSentiment = await analyzeNewsWithAI(newsData.news.headlines);
+
+      if (!aiSentiment) {
+        throw new Error('Failed to analyze sentiment');
+      }
+
+      res.json({
+        news: {
+          headlines: newsData.news.headlines,
+          score: aiSentiment.score,
+          sentiment: aiSentiment.sentiment,
+          impact: aiSentiment.impact
+        }
+      });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch sentiment data' });
+      console.error('Sentiment analysis error:', error);
+      res.status(500).json({ 
+        error: 'Failed to fetch sentiment data',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
-  });
-
-  // Settings API
-  app.post('/api/settings', (_req, res) => {
-    res.json({ success: true });
-  });
-
-  // Range Update API
-  app.post('/api/range', (_req, res) => {
-    res.json({ success: true });
   });
 
   return httpServer;

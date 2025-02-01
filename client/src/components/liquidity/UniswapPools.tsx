@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { connectWallet, disconnectWallet, getEtherscanLink } from "@/lib/web3";
-import { Loader2, ExternalLink, Power } from "lucide-react";
+import { Loader2, ExternalLink, Power, RefreshCw } from "lucide-react";
 import { formatEther } from "ethers";
+import { usePools } from "@/hooks/usePools";
 import {
   Select,
   SelectContent,
@@ -13,67 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface Pool {
-  id: string;
-  token0: string;
-  token1: string;
-  feeTier: number;
-  liquidity: string;
-  token0Price: string;
-  token1Price: string;
-  address?: string;
-  token0Amount?: string;
-  token1Amount?: string;
-  platform: 'uniswap' | 'pancakeswap';
-}
-
 type Platform = 'all' | 'uniswap' | 'pancakeswap';
 
 export default function UniswapPools() {
   const [isConnected, setIsConnected] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
-  const [pools, setPools] = useState<Pool[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>('all');
+  const { data: pools, isLoading, refetch, isRefetching } = usePools();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const checkWalletConnection = async () => {
-      try {
-        const accounts = await window.ethereum?.request({ method: 'eth_accounts' });
-        if (accounts && accounts.length > 0) {
-          setAddress(accounts[0]);
-          setIsConnected(true);
-          fetchPools();
-        }
-      } catch (error) {
-        console.error('Failed to check wallet connection:', error);
-      }
-    };
-
-    checkWalletConnection();
-
-    // Listen for account changes
-    const handleAccountsChanged = (accounts: string[]) => {
-      if (accounts.length === 0) {
-        handleDisconnect();
-      } else {
-        setAddress(accounts[0]);
-        setIsConnected(true);
-        fetchPools();
-      }
-    };
-
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-    }
-
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      }
-    };
-  }, []);
 
   const handleConnect = async () => {
     try {
@@ -81,7 +29,7 @@ export default function UniswapPools() {
       if (account) {
         setAddress(account);
         setIsConnected(true);
-        await fetchPools();
+        refetch(); // Refresh pools after connecting
       }
     } catch (error) {
       console.error('Failed to connect wallet:', error);
@@ -97,37 +45,13 @@ export default function UniswapPools() {
     await disconnectWallet();
     setIsConnected(false);
     setAddress(null);
-    setPools([]);
-  };
-
-  const fetchPools = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/pools/all');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setPools(data.pools);
-    } catch (error) {
-      console.error('Failed to fetch pools:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch liquidity pools",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleRefresh = () => {
-    if (isConnected) {
-      fetchPools();
-    }
+    refetch();
   };
 
-  const formatLiquidity = (amount: string, decimals: number = 18) => {
+  const formatLiquidity = (amount: string) => {
     try {
       const formatted = formatEther(amount);
       return parseFloat(formatted).toLocaleString(undefined, {
@@ -157,9 +81,9 @@ export default function UniswapPools() {
     return `https://info.uniswap.org/#/pools/${poolAddress}`;
   };
 
-  const filteredPools = pools.filter(pool => 
+  const filteredPools = pools?.filter(pool => 
     selectedPlatform === 'all' ? true : pool.platform === selectedPlatform
-  );
+  ) ?? [];
 
   return (
     <div className="space-y-6">
@@ -179,20 +103,17 @@ export default function UniswapPools() {
               <SelectItem value="pancakeswap">PancakeSwap V3</SelectItem>
             </SelectContent>
           </Select>
-          {isConnected && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Refresh"
-              )}
-            </Button>
-          )}
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isLoading || isRefetching}
+            className={isRefetching ? "animate-spin" : ""}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+
           <Button
             onClick={isConnected ? handleDisconnect : handleConnect}
             variant={isConnected ? "outline" : "default"}
@@ -234,17 +155,17 @@ export default function UniswapPools() {
                 </div>
                 <div className="text-right">
                   <div className="space-y-1">
-                    <p className="font-mono text-sm">
-                      {pool.token0}: {formatLiquidity(pool.token0Amount || '0')}
+                    <p className="text-sm">
+                      ETH Price: ${pool.token1Price.toFixed(2)}
                     </p>
-                    <p className="font-mono text-sm">
-                      {pool.token1}: {formatLiquidity(pool.token1Amount || '0', 6)} {/* USDC/USDT have 6 decimals */}
+                    <p className="text-sm">
+                      Liquidity: {formatLiquidity(pool.liquidity)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-sm text-muted-foreground">View on:</span>
                     <a
-                      href={getPlatformUrl(pool.address || '', pool.platform)}
+                      href={getPlatformUrl(pool.address, pool.platform)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline flex items-center gap-1"
@@ -253,7 +174,7 @@ export default function UniswapPools() {
                     </a>
                     <span className="text-muted-foreground">|</span>
                     <a
-                      href={getExplorerLink(pool.address || '', pool.platform)}
+                      href={getExplorerLink(pool.address, pool.platform)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline flex items-center gap-1"
