@@ -2,7 +2,6 @@
   "name": "rest-express",
   "version": "1.0.0",
   "license": "MIT",
-  "type": "module",
   "scripts": {
     "dev": "tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
@@ -10,7 +9,9 @@
     "check": "tsc",
     "test-contracts": "hardhat test",
     "test-contracts-bsc": "NODE_ENV=test NETWORK=bsc hardhat test --network localhost",
-    "deploy-test": "hardhat deploy --network hardhat"
+    "deploy-test": "hardhat deploy --network hardhat",
+    "deploy-bsc": "hardhat deploy --network bsc",
+    "execute-rollover-bsc": "npx hardhat run scripts/manager/rollover/index.ts --network bsc"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -88,6 +89,7 @@
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-ledger": "^1.0.3",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
