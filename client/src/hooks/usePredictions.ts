@@ -10,7 +10,6 @@ interface PredictionsData {
 
 export function usePredictions() {
   return useQuery<PredictionsData>({
-    queryKey: ['/api/predictions'],
-    enabled: false
+    queryKey: ['/api/predictions']
   });
 }
