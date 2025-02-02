@@ -25,8 +25,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             "initialize",
             USDC,
             Manager.address,
-            "hpAsset",
-            "hydroPumpAsset"
+            "RANGER",
+            "rangerAsset"
         );
         await execute(
             "Manager",

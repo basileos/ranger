@@ -1,12 +1,14 @@
 import { config, deployments, ethers } from "hardhat";
-import {Pool} from "../typechain-types";
+import {Manager, Pool} from "../typechain-types";
 import { expect } from "chai";
 import {transferUSDC} from "./testUtils";
 import {Signer, parseUnits} from "ethers";
 import ERC20
     from "../artifacts/@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol/IERC20Upgradeable.json";
+import {executeRollover} from "../src/implementations/executeRollover";
 
 let pool: Pool;
+let manager: Manager;
 let signers: Array<Signer>;
 let investorUser: Signer;
 let investorUserAddress: string;
@@ -21,6 +23,10 @@ const setupTest = async () => {
     const PoolFactory = await ethers.getContractFactory("Pool");
     pool = await PoolFactory.attach(PoolDeployment.address);
     USDC = await ethers.getContractAt(ERC20.abi, "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d");
+
+    const ManagerDeployment = await deployments.get("Manager");
+    const ManagerFactory = await ethers.getContractFactory("Manager");
+    manager = await ManagerFactory.attach(ManagerDeployment.address);
 }
 
 describe("Pool", function () {
@@ -38,10 +44,12 @@ describe("Pool", function () {
     it("Transaction should be confirmed, if user approved before deposit", async function () {
         const depositAmount = String(100e18);
         const poolAddress = await pool.getAddress();
+        const managerAddress = await manager.getAddress();
         await USDC
             .connect(investorUser)
             .approve(poolAddress, depositAmount);
         await pool.connect(investorUser).deposit(depositAmount);
         expect(await pool.balanceOf(investorUserAddress)).to.equal(depositAmount);
+        // await executeRollover(managerAddress, poolAddress);
     });
 });
