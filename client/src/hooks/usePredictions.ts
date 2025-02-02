@@ -5,11 +5,11 @@ interface PredictionsData {
   rangeHigh: number;
   confidence: number;
   timestamp: number;
+  explanation: string;
 }
 
 export function usePredictions() {
   return useQuery<PredictionsData>({
-    queryKey: ['/api/predictions'],
-    refetchInterval: 60000, // Refetch every minute
+    queryKey: ['/api/predictions']
   });
 }

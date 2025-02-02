@@ -3,7 +3,7 @@ import {
   NewsItem,
   AINewsAnalysis,
   AITechnicalAnalysis,
-  TECHNICAL_INDICATORS,
+  REQUIRED_INDICATORS,
   TECHNICAL_ANALYSIS
 } from './utils/utils';
 
@@ -33,8 +33,8 @@ async function verifyApiKey(): Promise<boolean> {
 }
 
 async function refineNewsAnalysis(
-  analysis: AINewsAnalysis,
-  headlines: NewsItem[]
+    analysis: AINewsAnalysis,
+    headlines: NewsItem[]
 ): Promise<AINewsAnalysis> {
   try {
     const response = await openai.chat.completions.create({
@@ -163,10 +163,10 @@ Return a JSON object with:
 }
 
 async function refineTechnicalAnalysis(
-  analysis: AITechnicalAnalysis,
-  currentPrice: number,
-  volume24h: number,
-  priceChange24h: number
+    analysis: AITechnicalAnalysis,
+    currentPrice: number,
+    volume24h: number,
+    priceChange24h: number
 ): Promise<AITechnicalAnalysis> {
   try {
     const response = await openai.chat.completions.create({
@@ -229,10 +229,10 @@ Return refined JSON analysis with improved confidence scores and detailed reason
 }
 
 export async function analyzeTechnicalIndicatorsWithAI(
-  currentPrice: number,
-  volume24h: number,
-  priceChange24h: number,
-  existingIndicators: any[]
+    currentPrice: number,
+    volume24h: number,
+    priceChange24h: number,
+    existingIndicators: any[]
 ): Promise<AITechnicalAnalysis> {
   try {
     if (!await verifyApiKey()) {
@@ -259,52 +259,68 @@ export async function analyzeTechnicalIndicatorsWithAI(
       messages: [
         {
           role: "system",
-          content: `You are an expert crypto technical analyst. Analyze the market data using these indicators:
-          ${Object.values(TECHNICAL_INDICATORS).map(indicator => 
-            `${indicator.name}: ${indicator.description}`
+          content: `You are an expert crypto technical analyst. Analyze the following indicators with specific value validation rules:
+- Analyze the market data using these indicators:
+          ${Object.values(REQUIRED_INDICATORS).map(indicator =>
+              `${indicator.name}: ${indicator.description}`
           ).join('\n')}
+Technical Indicator Validation Rules:
+1. EMA (Exponential Moving Average):
+   - Value must be within ±5% of current price
+   - Higher values suggest uptrend, lower suggest downtrend
 
-Trading Signal Rules:
-BUY Signals:
-- RSI < 30: Strong oversold
-- StochRSI < 20: Extreme oversold
-- Price below lower BB with high volume
-- MACD bullish crossover
-- Multiple support level convergence
-- Rising volume with price increase
+2. MACD:
+   - Value should be between -3% and +3% of price
+   - Positive values suggest bullish momentum
+   - Negative values suggest bearish momentum
 
-SELL Signals:
-- RSI > 70: Strong overbought
-- StochRSI > 80: Extreme overbought
-- Price above upper BB with declining volume
-- MACD bearish crossover
-- Multiple resistance level convergence
-- Falling volume with price increase
+3. RSI (Relative Strength Index):
+   - Must be between 0-100
+   - Overbought above 70
+   - Oversold below 30
+   - Normal range 40-60
 
-NEUTRAL Signals:
-- RSI between 40-60
-- Price within BB middle band
-- Low volume or conflicting indicators
+4. Stochastic RSI:
+   - Must be between 0-100
+   - Extreme overbought above 80
+   - Extreme oversold below 20
+
+5. Bollinger Bands:
+   - Upper/Lower bands within ±2-3 standard deviations
+   - Value represents band width
+   - Normal range 2-5% of price
+
+6. ATR (Average True Range):
+   - Should be 0.5-3% of current price
+   - Higher values indicate higher volatility
+
+7. Fibonacci Retracements:
+   - Must align with key levels: 0.236, 0.382, 0.5, 0.618, 0.786
+   - Value represents the primary support/resistance level
+
+8. VPVR (Volume Profile):
+   - Value proportional to volume * price
+   - Higher values indicate stronger price levels
 
 Signal Confidence Rules:
-- Multiple confirming indicators: High confidence (0.8-1.0)
-- Single strong signal: Medium confidence (0.5-0.7)
-- Mixed signals: Low confidence (0.2-0.4)
-- Conflicting signals: Very low confidence (0-0.1)
+- Multiple confirming indicators: 0.8-1.0
+- Strong single signal: 0.6-0.7
+- Mixed signals: 0.4-0.5
+- Conflicting signals: 0.2-0.3
 
-Return detailed JSON analysis with:
+Return a detailed JSON with:
 {
   "indicators": [{
     "name": string,
-    "value": number,
+    "value": number (with proper range validation),
     "signal": "buy" | "sell" | "neutral",
     "confidence": number (0-1),
-    "description": string
+    "reasoning": string
   }],
   "overallSentiment": number (-1 to 1),
   "priceRange": {
-    "low": number,
-    "high": number,
+    "low": number (max 8% below current),
+    "high": number (max 8% above current),
     "confidence": number (0-1)
   }
 }`
@@ -316,6 +332,10 @@ Return detailed JSON analysis with:
       ],
       response_format: { type: "json_object" },
     });
+
+    if (!response.choices[0].message.content) {
+      throw new Error('Empty response from OpenAI');
+    }
 
     const analysis = JSON.parse(response.choices[0].message.content);
 
@@ -330,28 +350,31 @@ Return detailed JSON analysis with:
       overallSentiment: Math.max(-1, Math.min(1, analysis.overallSentiment || 0)),
       priceRange: {
         low: Math.max(0, analysis.priceRange?.low || 0),
-        high: Math.max(analysis.priceRange?.low || 0 + 1, analysis.priceRange?.high || 0),
+        high: Math.max(analysis.priceRange?.low || 1, analysis.priceRange?.high || 0),
         confidence: Math.max(0, Math.min(1, analysis.priceRange?.confidence || 0.5))
       }
     };
 
     // Refine the analysis
     return await refineTechnicalAnalysis(initialAnalysis, currentPrice, volume24h, priceChange24h);
+
   } catch (error) {
     console.error('AI Technical Analysis failed:', error);
     throw error;
   }
 }
 
+// Update the generatePredictionsWithAI function with a more focused prompt
 export async function generatePredictionsWithAI(
-  price: number,
-  technicalAnalysis: AITechnicalAnalysis,
-  newsAnalysis: AINewsAnalysis
+    price: number,
+    technicalAnalysis: AITechnicalAnalysis,
+    newsAnalysis: AINewsAnalysis
 ): Promise<{
   rangeLow: number;
   rangeHigh: number;
   confidence: number;
   timestamp: number;
+  explanation: string;
 }> {
   try {
     if (!await verifyApiKey()) {
@@ -370,34 +393,19 @@ export async function generatePredictionsWithAI(
       messages: [
         {
           role: "system",
-          content: `You are a crypto price prediction expert. 
+          content: `Analyze the current crypto market data and technical indicators to predict a price range.
+Rules:
+- Use technical indicators (70%) and news sentiment (30%)
+- Range must be within ±8% of current price
+- Higher confidence requires tighter range
+- Consider volume confirmation
 
-Price Range Prediction Rules:
-1. Technical Factors Weight (70%):
-   - Strong oversold (RSI < 30): Expect 5-10% upside
-   - Strong overbought (RSI > 70): Expect 5-10% downside
-   - Bollinger Band breakouts: 2-5% movement in breakout direction
-   - MACD crossovers: 3-7% movement in signal direction
-   - Volume confirmation: Increase confidence by 20%
-
-2. News Impact Weight (30%):
-   - Major positive news: 2-5% upside
-   - Major negative news: 2-5% downside
-   - Multiple confirming news: Double the impact
-   - Contradictory news: Reduce range confidence
-
-3. Confidence Calculation:
-   - Technical signal agreement: 0-40%
-   - Volume confirmation: 0-20%
-   - News impact clarity: 0-20%
-   - Market volatility adjustment: 0-20%
-
-Return a JSON response with:
+Return JSON:
 {
-  "rangeLow": number,
-  "rangeHigh": number,
-  "confidence": number (0-100),
-  "reasoning": string
+  "rangeLow": number,  // > currentPrice * 0.92
+  "rangeHigh": number, // < currentPrice * 1.08
+  "confidence": number,// 0-100
+  "explanation": string// Brief technical reasoning
 }`
         },
         {
@@ -410,44 +418,14 @@ Return a JSON response with:
 
     const prediction = JSON.parse(response.choices[0].message.content);
 
-    // Refine the prediction with a second pass
-    const refinementResponse = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        {
-          role: "system",
-          content: `Review and refine the initial price prediction:
-Initial Prediction:
-- Range: $${prediction.rangeLow} - $${prediction.rangeHigh}
-- Confidence: ${prediction.confidence}%
-
-Consider:
-1. Range Realism:
-   - Is the range too wide/narrow given market conditions?
-   - Are the levels aligned with key support/resistance?
-2. Confidence Accuracy:
-   - Are there enough confirming signals?
-   - Is the market context properly weighted?
-
-Return refined JSON prediction.`
-        },
-        {
-          role: "user",
-          content: JSON.stringify({ prediction, analysisData })
-        }
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    const refinedPrediction = JSON.parse(refinementResponse.choices[0].message.content);
-
     return {
-      rangeLow: Math.max(0, refinedPrediction.rangeLow || prediction.rangeLow || 0),
-      rangeHigh: Math.max(refinedPrediction.rangeLow || prediction.rangeLow || 0 + 1,
-                         refinedPrediction.rangeHigh || prediction.rangeHigh || 0),
-      confidence: Math.max(0, Math.min(100, refinedPrediction.confidence || prediction.confidence || 50)),
-      timestamp: Date.now()
+      rangeLow: Math.max(price * 0.88, Math.min(prediction.rangeLow, price * 0.95)),
+      rangeHigh: Math.max(price * 1.05, Math.min(prediction.rangeHigh, price * 1.12)),
+      confidence: Math.max(0, Math.min(100, prediction.confidence)),
+      timestamp: Date.now(),
+      explanation: prediction.explanation || "No explanation available"
     };
+
   } catch (error) {
     console.error('AI Prediction Generation failed:', error);
     throw error;

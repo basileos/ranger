@@ -1,6 +1,12 @@
-// Common utility functions for technical analysis calculations
+import { REQUIRED_INDICATORS, TECHNICAL_ANALYSIS } from "./utils";
 
-export function calculateEMA(price: number, period: number): number {
+// Signal generation with confidence
+type Signal = {
+  signal: "buy" | "sell" | "neutral";
+  confidence: number;
+};
+
+export function calculateEMA(price: number): number {
   return price * 0.95; // Simplified EMA calculation
 }
 
@@ -33,98 +39,139 @@ export function calculateVPVR(volume: number, price: number): number {
 }
 
 // Signal generation functions
-export function getEMASignal(price: number, period: number): 'buy' | 'sell' | 'neutral' {
-  return price > period * 100 ? 'buy' : price < period * 50 ? 'sell' : 'neutral';
+export function getEMASignal(
+  price: number,
+  period: number,
+): "buy" | "sell" | "neutral" {
+  return price > period * 100
+    ? "buy"
+    : price < period * 50
+      ? "sell"
+      : "neutral";
 }
 
-export function getMACDSignal(price: number): 'buy' | 'sell' | 'neutral' {
-  return price > 2000 ? 'buy' : price < 1500 ? 'sell' : 'neutral';
+export function getMACDSignal(price: number): "buy" | "sell" | "neutral" {
+  return price > 2000 ? "buy" : price < 1500 ? "sell" : "neutral";
 }
 
-export function getRSISignal(price: number): 'buy' | 'sell' | 'neutral' {
+export function getRSISignal(price: number): "buy" | "sell" | "neutral" {
   const rsi = calculateRSI(price);
-  return rsi > 70 ? 'sell' : rsi < 30 ? 'buy' : 'neutral';
+  return rsi > 70 ? "sell" : rsi < 30 ? "buy" : "neutral";
 }
 
-export function getStochRSISignal(price: number): 'buy' | 'sell' | 'neutral' {
+export function getStochRSISignal(price: number): "buy" | "sell" | "neutral" {
   const stochRSI = calculateStochRSI(price);
-  return stochRSI > 80 ? 'sell' : stochRSI < 20 ? 'buy' : 'neutral';
+  return stochRSI > 80 ? "sell" : stochRSI < 20 ? "buy" : "neutral";
 }
 
-export function getBBSignal(price: number): 'buy' | 'sell' | 'neutral' {
-  return price > 2200 ? 'sell' : price < 1800 ? 'buy' : 'neutral';
+export function getBBSignal(price: number): "buy" | "sell" | "neutral" {
+  return price > 2200 ? "sell" : price < 1800 ? "buy" : "neutral";
 }
 
-export function getATRSignal(price: number): 'buy' | 'sell' | 'neutral' {
-  return price > 2100 ? 'sell' : price < 1900 ? 'buy' : 'neutral';
+export function getATRSignal(price: number): "buy" | "sell" | "neutral" {
+  return price > 2100 ? "sell" : price < 1900 ? "buy" : "neutral";
 }
 
-export function getFibonacciSignal(price: number): 'buy' | 'sell' | 'neutral' {
-  return price > 2300 ? 'sell' : price < 1700 ? 'buy' : 'neutral';
+export function getFibonacciSignal(price: number): "buy" | "sell" | "neutral" {
+  return price > 2300 ? "sell" : price < 1700 ? "buy" : "neutral";
 }
 
-export function getVPVRSignal(volume: number, price: number): 'buy' | 'sell' | 'neutral' {
+export function getVPVRSignal(
+  volume: number,
+  price: number,
+): "buy" | "sell" | "neutral" {
   const vpvr = calculateVPVR(volume, price);
-  return vpvr > 1000 ? 'buy' : vpvr < 500 ? 'sell' : 'neutral';
+  return vpvr > 1000 ? "buy" : vpvr < 500 ? "sell" : "neutral";
 }
 
-export function getDefaultIndicators(price: number, volume?: number) {
-  return [
-    {
-      name: 'EMA (14)',
-      value: calculateEMA(price, 14),
-      signal: getEMASignal(price, 14),
-      description: 'Exponential Moving Average gives more weight to recent prices, making it more responsive to new information.',
-      learnMoreUrl: 'https://www.investopedia.com/terms/e/ema.asp'
-    },
-    {
-      name: 'MACD',
-      value: calculateMACD(price),
-      signal: getMACDSignal(price),
-      description: 'Moving Average Convergence Divergence shows the relationship between two moving averages of an asset\'s price.',
-      learnMoreUrl: 'https://www.investopedia.com/terms/m/macd.asp'
-    },
-    {
-      name: 'RSI',
-      value: calculateRSI(price),
-      signal: getRSISignal(price),
-      description: 'Relative Strength Index measures the speed and magnitude of recent price changes to evaluate overbought or oversold conditions.',
-      learnMoreUrl: 'https://www.investopedia.com/terms/r/rsi.asp'
-    },
-    {
-      name: 'Stoch RSI',
-      value: calculateStochRSI(price),
-      signal: getStochRSISignal(price),
-      description: 'Stochastic RSI is an oscillator that measures the level of RSI relative to its high-low range over a specific period.',
-      learnMoreUrl: 'https://www.investopedia.com/terms/s/stochrsi.asp'
-    },
-    {
-      name: 'Bollinger Bands',
-      value: calculateBB(price),
-      signal: getBBSignal(price),
-      description: 'Bollinger Bands measure volatility by plotting standard deviations around a simple moving average.',
-      learnMoreUrl: 'https://www.investopedia.com/terms/b/bollingerbands.asp'
-    },
-    {
-      name: 'ATR',
-      value: calculateATR(price),
-      signal: getATRSignal(price),
-      description: 'Average True Range measures market volatility by decomposing the entire range of an asset price for a period.',
-      learnMoreUrl: 'https://www.investopedia.com/terms/a/atr.asp'
-    },
-    {
-      name: 'Fibonacci',
-      value: calculateFibonacci(price),
-      signal: getFibonacciSignal(price),
-      description: 'Fibonacci Retracement Levels identify potential support/resistance levels based on Fibonacci ratios.',
-      learnMoreUrl: 'https://www.investopedia.com/terms/f/fibonacciretracement.asp'
-    },
-    {
-      name: 'VPVR',
-      value: volume ? calculateVPVR(volume, price) : 0,
-      signal: volume ? getVPVRSignal(volume, price) : 'neutral',
-      description: 'Volume Profile Visible Range shows trading activity at specific price levels, helping identify support and resistance.',
-      learnMoreUrl: 'https://www.investopedia.com/terms/v/volume-profile.asp'
+function getSignal(
+  value: number,
+  thresholds: { buy: number; sell: number },
+): Signal {
+  if (value >= thresholds.sell) {
+    const strength = Math.min((value - thresholds.sell) / thresholds.sell, 1);
+    return { signal: "sell", confidence: 0.5 + strength * 0.5 };
+  }
+  if (value <= thresholds.buy) {
+    const strength = Math.min((thresholds.buy - value) / thresholds.buy, 1);
+    return { signal: "buy", confidence: 0.5 + strength * 0.5 };
+  }
+  return { signal: "neutral", confidence: 0.6 }; // Higher base confidence for neutral signals
+}
+
+// Always return all 8 required indicators
+export function getDefaultIndicators(
+  price: number,
+  volume: number = 0,
+): Array<{
+  name: string;
+  value: number;
+  signal: "buy" | "sell" | "neutral";
+  confidence: number;
+  description: string;
+  learnMoreUrl: string;
+}> {
+  return REQUIRED_INDICATORS.map((indicator) => {
+    let value: number;
+    let signalData: Signal;
+
+    switch (indicator.name) {
+      case "EMA":
+        value = calculateEMA(price);
+        signalData = getSignal(value, {
+          buy: price * 0.98,
+          sell: price * 1.02,
+        });
+        break;
+      case "MACD":
+        value = calculateMACD(price);
+        signalData = getSignal(value, {
+          buy: price * 0.01,
+          sell: price * 0.02,
+        });
+        break;
+      case "RSI":
+        value = calculateRSI(price);
+        signalData = getSignal(value, {
+          buy: TECHNICAL_ANALYSIS.RSI.OVERSOLD,
+          sell: TECHNICAL_ANALYSIS.RSI.OVERBOUGHT,
+        });
+        break;
+      case "STOCH_RSI":
+        value = calculateStochRSI(price);
+        signalData = getSignal(value, { buy: 20, sell: 80 });
+        break;
+      case "BB":
+        value = calculateBB(price);
+        signalData = getSignal(price / value, { buy: 0.95, sell: 1.05 });
+        break;
+      case "ATR":
+        value = calculateATR(price);
+        signalData = getSignal(value / price, { buy: 0.01, sell: 0.03 });
+        break;
+      case "FIBONACCI":
+        value = calculateFibonacci(price);
+        signalData = getSignal(price / value, { buy: 0.95, sell: 1.05 });
+        break;
+      case "VPVR":
+        value = calculateVPVR(volume, price);
+        signalData = getSignal(value, {
+          buy: Math.max(price * 0.0005, 1),
+          sell: Math.max(price * 0.001, 2),
+        });
+        break;
+      default:
+        value = 0;
+        signalData = { signal: "neutral", confidence: 0.5 };
     }
-  ];
+
+    return {
+      name: indicator.fullName,
+      value,
+      signal: signalData.signal,
+      confidence: signalData.confidence,
+      description: indicator.description,
+      learnMoreUrl: indicator.learnMoreUrl,
+    };
+  });
 }

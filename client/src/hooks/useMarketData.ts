@@ -22,7 +22,6 @@ export interface MarketData {
 
 export function useMarketData() {
   return useQuery<MarketData>({
-    queryKey: ['/api/market-data'],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    queryKey: ['/api/market-data']
   });
 }

@@ -9,18 +9,31 @@ import { useMarketData } from "@/hooks/useMarketData";
 import { usePredictions } from "@/hooks/usePredictions";
 import { formatDistanceToNow } from "date-fns";
 import { RefreshCw } from "lucide-react";
+import PredictionExplanationDialog from "@/components/analysis/PredictionExplanationDialog";
+import { useSentiment } from "@/hooks/useSentiment";
+import ConnectButton from "@/components/web3/ConnectButton";
+import { DepositWithdraw } from "@/components/DepositWithdraw";
+import { useAccount } from "@/contexts/AccountContext";
 
 export default function Dashboard() {
-  const { data: marketData, isLoading: marketLoading } = useMarketData();
+  const {
+    data: marketData,
+    isLoading: marketLoading,
+    refetch: refetchMarket,
+  } = useMarketData();
   const {
     data: predictions,
     refetch: refetchPredictions,
     isRefetching,
-    isLoading: predictionLoading,
   } = usePredictions();
 
+  const { refetch: refetchSentiment } = useSentiment();
+  const { address } = useAccount();
+
   const handleRefresh = () => {
+    refetchMarket();
     refetchPredictions();
+    refetchSentiment();
   };
 
   return (
@@ -28,13 +41,17 @@ export default function Dashboard() {
       <Sidebar />
 
       <main className="flex-1 p-6 space-y-6">
+        <div className="flex justify-end">
+          <ConnectButton />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="col-span-2 p-4">
-            <h2 className="text-lg font-semibold mb-4">ETH/USDC Price Chart</h2>
+            <h2 className="text-lg font-semibold mb-4">BNB/USDC Price Chart</h2>
             <TradingViewChart />
           </Card>
 
-          <Card className="p-4">
+          <div className="flex flex-col gap-4">
+          <Card className="p-4 flex-1">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">AI Predictions</h2>
               <Button
@@ -65,11 +82,34 @@ export default function Dashboard() {
                 <div className="text-sm text-muted-foreground">
                   Updated {formatDistanceToNow(predictions.timestamp)} ago
                 </div>
+                <div className="flex justify-end mt-2">
+                  <PredictionExplanationDialog
+                    explanation={predictions.explanation}
+                    rangeLow={predictions.rangeLow}
+                    rangeHigh={predictions.rangeHigh}
+                  />
+                </div>
               </div>
             ) : (
               <div className="animate-pulse h-20 bg-muted rounded" />
             )}
           </Card>
+
+          {/* Deposit & Withdraw section */}
+          <Card className="p-4 flex-1">
+            <h2 className="text-lg font-semibold mb-4">Deposit & Withdraw</h2>
+            {address ? (
+                <DepositWithdraw />
+            ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    Connect your wallet to deposit or withdraw funds
+                  </p>
+                </div>
+            )}
+          </Card>
+          </div>
+
 
           <Card className="p-4">
             <TechnicalIndicators data={marketData} isLoading={marketLoading} />
@@ -80,7 +120,7 @@ export default function Dashboard() {
           </Card>
 
           <Card className="p-4">
-            <RangeAdjuster predictions={predictions} isLoading={predictionLoading} />
+            <RangeAdjuster predictions={predictions} />
           </Card>
         </div>
       </main>
