@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUSDCBalance, useStrategyContract, useContractBalances } from '@/lib/web3/hooks';
 import { CONTRACT_METADATA } from '@/lib/web3/constants';
 import { useAccount } from '@/contexts/AccountContext';
+import { getBscProvider } from '@/lib/web3/utils';
 
 export function DepositWithdraw() {
   const { address } = useAccount();
@@ -44,6 +45,7 @@ export function DepositWithdraw() {
       }
       setAmount('');
     } catch (err) {
+      console.error(err);
       toast({
         title: 'Transaction failed',
         description: err instanceof Error ? err.message : 'Unknown error occurred',

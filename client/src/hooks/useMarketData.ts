@@ -22,6 +22,6 @@ export interface MarketData {
 
 export function useMarketData() {
   return useQuery<MarketData>({
-    queryKey: ['/api/market-data']
+    queryKey: ['/api/market-data'],
   });
 }

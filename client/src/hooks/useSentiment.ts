@@ -15,6 +15,6 @@ interface SentimentData {
 
 export function useSentiment() {
   return useQuery<SentimentData>({
-    queryKey: ['/api/sentiment']
+    queryKey: ['/api/sentiment'],
   });
 }

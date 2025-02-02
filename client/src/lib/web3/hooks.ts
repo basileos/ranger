@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { CONTRACTS } from './constants';
 import { 
-  getBscProvider, 
+  getBscProvider,
+  getWalletProvider,
+  getWalletSigner,
   getUsdcContract, 
   getStrategyContract,
   formatTokenAmount,
@@ -77,25 +79,38 @@ export function useStrategyContract(account: string | null) {
     async (amount: string) => {
       if (!account) throw new Error('Wallet not connected');
 
-      const provider = getBscProvider();
-      const signer = await provider.getSigner(account);
+      try {
+        // Get signer from connected wallet
+        const signer = await getWalletSigner();
 
-      const usdcContract = getUsdcContract(signer);
-      const strategyContract = getStrategyContract(signer);
+        // Create contract instances with signer
+        const usdcContract = getUsdcContract(signer);
+        const strategyContract = getStrategyContract(signer);
 
-      // Parse amount with proper decimals
-      const parsedAmount = await parseTokenAmount(amount, usdcContract);
+        // Parse amount with proper decimals
+        const parsedAmount = await parseTokenAmount(amount, usdcContract);
 
-      // Approve USDC spending
-      const approvalTx = await usdcContract.approve(
-        CONTRACTS.STRATEGY.address,
-        ethers.MaxUint256
-      );
-      await approvalTx.wait();
+        // Approve USDC spending
+        console.log('Approving USDC spend...');
+        const approvalTx = await usdcContract.approve(
+          CONTRACTS.STRATEGY.address,
+          parsedAmount
+        );
+        console.log('Approval transaction sent:', approvalTx.hash);
+        await approvalTx.wait();
+        console.log('Approval confirmed');
 
-      // Deposit into strategy
-      const depositTx = await strategyContract.deposit(parsedAmount);
-      await depositTx.wait();
+        // Deposit into strategy
+        console.log('Depositing into strategy...');
+        const depositTx = await strategyContract.deposit(parsedAmount);
+        console.log('Deposit transaction sent:', depositTx.hash);
+        await depositTx.wait();
+        console.log('Deposit confirmed');
+
+      } catch (error) {
+        console.error('Transaction failed:', error);
+        throw error;
+      }
     },
     [account]
   );
@@ -104,15 +119,23 @@ export function useStrategyContract(account: string | null) {
     async (amount: string) => {
       if (!account) throw new Error('Wallet not connected');
 
-      const provider = getBscProvider();
-      const signer = await provider.getSigner(account);
-      const usdcContract = getUsdcContract(provider);
-      const strategyContract = getStrategyContract(signer);
+      try {
+        // Get signer from connected wallet
+        const signer = await getWalletSigner();
+        const usdcContract = getUsdcContract(signer);
+        const strategyContract = getStrategyContract(signer);
 
-      const parsedAmount = await parseTokenAmount(amount, usdcContract);
+        const parsedAmount = await parseTokenAmount(amount, usdcContract);
 
-      const tx = await strategyContract.requestWithdrawal(parsedAmount);
-      await tx.wait();
+        console.log('Requesting withdrawal...');
+        const tx = await strategyContract.requestWithdrawal(parsedAmount);
+        console.log('Withdrawal request sent:', tx.hash);
+        await tx.wait();
+        console.log('Withdrawal request confirmed');
+      } catch (error) {
+        console.error('Withdrawal request failed:', error);
+        throw error;
+      }
     },
     [account]
   );

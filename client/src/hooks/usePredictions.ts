@@ -10,6 +10,6 @@ interface PredictionsData {
 
 export function usePredictions() {
   return useQuery<PredictionsData>({
-    queryKey: ['/api/predictions']
+    queryKey: ['/api/predictions'],
   });
 }

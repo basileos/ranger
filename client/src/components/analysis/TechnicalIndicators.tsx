@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowUpIcon, ArrowDownIcon, MinusIcon, InfoIcon, TrendingUp, TrendingDown } from "lucide-react";
 import type { MarketData } from "@/hooks/useMarketData";
